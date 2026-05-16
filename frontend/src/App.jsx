@@ -3,38 +3,79 @@ import { useState, useRef, useEffect } from "react";
 const API = "http://localhost:8000";
 
 const AGENTS = [
-  { id: "discovery",     name: "Discovery",     icon: "🔍", color: "#38bdf8", desc: "Scraping live boards...",       done: "Jobs discovered" },
-  { id: "verification",  name: "Verification",  icon: "✅", color: "#f59e0b", desc: "Scoring realness...",           done: "Jobs verified" },
-  { id: "signal",        name: "Signals",       icon: "📡", color: "#22d3ee", desc: "Reading hiring intent...",      done: "Signals gathered" },
-  { id: "outreach",      name: "Outreach",      icon: "✉️", color: "#a78bfa", desc: "Drafting messages...",          done: "Messages ready" },
-  { id: "application",   name: "Auto-Apply",    icon: "🤖", color: "#34d399", desc: "Submitting application...",     done: "Applied" },
+  { id: "discovery",    name: "Discovery",    glyph: "✺", desc: "Scanning live boards…",     done: "Jobs discovered" },
+  { id: "verification", name: "Verification", glyph: "✦", desc: "Assaying realness…",         done: "Jobs verified"   },
+  { id: "signal",       name: "Signals",      glyph: "❍", desc: "Reading hiring intent…",     done: "Signals gathered"},
+  { id: "outreach",     name: "Outreach",     glyph: "✎", desc: "Composing dispatches…",      done: "Messages ready"  },
+  { id: "application",  name: "Auto-Apply",   glyph: "➤", desc: "Filing application…",        done: "Applied"         },
 ];
 
-function AgentCard({ agent, status }) {
+/* ── reusable printed section header ───────────────────────────── */
+function Rule({ n, label, tone = "amber" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 13 }}>
+      <span style={{
+        fontFamily: "'Space Mono', monospace", fontSize: 11, fontWeight: 700,
+        color: `var(--${tone})`, border: `1px solid var(--${tone})`, borderRadius: 2,
+        padding: "1px 7px", letterSpacing: ".05em",
+      }}>{n}</span>
+      <span style={{
+        fontFamily: "'Space Mono', monospace", fontSize: 11, fontWeight: 700,
+        letterSpacing: ".34em", color: "var(--bone)", textTransform: "uppercase",
+      }}>{label}</span>
+      <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg,var(--${tone}),transparent)` }} />
+    </div>
+  );
+}
+
+function Stamp({ children, tone = "amber", rot = -3 }) {
+  return (
+    <span style={{
+      display: "inline-block", transform: `rotate(${rot}deg)`,
+      fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700,
+      letterSpacing: ".18em", textTransform: "uppercase", color: `var(--${tone})`,
+      border: `1.5px solid var(--${tone})`, borderRadius: 3,
+      padding: "3px 9px", boxShadow: `inset 0 0 0 1px var(--paper)`,
+      whiteSpace: "nowrap",
+    }}>{children}</span>
+  );
+}
+
+function AgentCard({ agent, status, idx }) {
   const done = status === "done";
   const running = status === "running";
+  const tone = done ? "teal" : running ? "amber" : "ink-soft";
   return (
     <div style={{
-      flex: 1, minWidth: 0,
-      background: "rgba(15,22,35,0.85)",
-      border: `1px solid ${done ? agent.color + "55" : running ? agent.color + "33" : "#1e293b"}`,
-      borderRadius: 14, padding: "12px 13px",
-      transition: "all 0.4s", position: "relative", overflow: "hidden",
-      boxShadow: done ? `0 0 28px ${agent.color}22` : "none",
+      flex: 1, minWidth: 0, background: "var(--paper)",
+      border: "1px solid rgba(36,28,18,.22)", borderRadius: 6,
+      padding: "13px 13px 12px", position: "relative", overflow: "hidden",
+      transition: "all .4s",
+      boxShadow: done
+        ? "0 14px 30px -16px rgba(74,165,153,.55), inset 0 0 0 1px rgba(36,28,18,.06)"
+        : "0 14px 30px -20px rgba(0,0,0,.6), inset 0 0 0 1px rgba(36,28,18,.06)",
     }}>
-      {running && (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${agent.color}, transparent)`, animation: "scan 1.5s linear infinite" }} />
-      )}
-      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: `${agent.color}15`, border: `1px solid ${agent.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{agent.icon}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#f1f5f9" }}>{agent.name}</div>
-          <div style={{ fontSize: 9, color: running ? "#f59e0b" : done ? agent.color : "#334155", fontFamily: "monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {running ? agent.desc : done ? agent.done : "Idle"}
-          </div>
-        </div>
-        {done    && <span style={{ fontSize: 8, background: `${agent.color}18`, color: agent.color, padding: "2px 6px", borderRadius: 7, fontWeight: 700 }}>✓</span>}
-        {running && <span style={{ fontSize: 8, background: "#f59e0b18", color: "#f59e0b", padding: "2px 6px", borderRadius: 7, fontWeight: 700, animation: "pulse 1s infinite" }}>●</span>}
+      {running && <div className="scan-line" />}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+        <span style={{
+          fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700,
+          color: "var(--ink-soft)", letterSpacing: ".14em",
+        }}>{String(idx + 1).padStart(2, "0")}</span>
+        <span style={{
+          fontSize: 18, color: `var(--${tone})`, lineHeight: 1,
+          filter: done ? "drop-shadow(0 0 6px rgba(74,165,153,.6))" : "none",
+        }}>{agent.glyph}</span>
+      </div>
+      <div style={{
+        fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 600,
+        color: "var(--ink)", lineHeight: 1.05, marginBottom: 4,
+      }}>{agent.name}</div>
+      <div style={{
+        fontFamily: "'Space Mono', monospace", fontSize: 9,
+        color: running ? "var(--sienna)" : done ? "var(--teal)" : "var(--ink-soft)",
+        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+      }}>
+        {running ? agent.desc : done ? "✓ " + agent.done : "— idle —"}
       </div>
     </div>
   );
@@ -44,14 +85,21 @@ function Feed({ logs }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [logs]);
   return (
-    <div ref={ref} style={{ background: "rgba(0,0,0,0.45)", border: "1px solid #0f172a", borderRadius: 10, padding: "12px 14px", height: 170, overflowY: "auto", fontFamily: "monospace", fontSize: 11 }}>
+    <div style={{
+      background: "var(--void)", border: "1px solid rgba(224,162,63,.22)",
+      borderRadius: 6, padding: "14px 16px", height: 178, overflowY: "auto",
+      fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.7,
+      boxShadow: "inset 0 0 60px rgba(0,0,0,.7)", position: "relative",
+    }}>
+      <div className="crt" />
       {logs.length === 0
-        ? <div style={{ color: "#1e293b" }}>Waiting for agents...</div>
+        ? <div style={{ color: "var(--bone-soft)", opacity: .5 }}>▌ awaiting telemetry…</div>
         : logs.map((l, i) => (
-          <div key={i} style={{ marginBottom: 4 }}>
-            <span style={{ color: "#334155" }}>[{l.time}] </span>
-            <span style={{ color: l.agentColor, fontWeight: 700 }}>[{l.agent}]</span>
-            {" "}<span style={{ color: l.color || "#64748b" }}>{l.msg}</span>
+          <div key={i} style={{ marginBottom: 3 }}>
+            <span style={{ color: "var(--bone-soft)", opacity: .55 }}>{l.time} </span>
+            <span style={{ color: "var(--amber)", fontWeight: 700 }}>{l.agent}</span>
+            <span style={{ color: "var(--bone-soft)" }}> » </span>
+            <span style={{ color: l.color === "done" ? "var(--teal)" : "var(--bone)" }}>{l.msg}</span>
           </div>
         ))
       }
@@ -61,40 +109,57 @@ function Feed({ logs }) {
 
 function JobCard({ job, onApply, applyState }) {
   const score = job.score ?? 70;
-  const color = score >= 80 ? "#34d399" : score >= 60 ? "#f59e0b" : "#f87171";
-  const label = score >= 80 ? "STRONG FIT" : score >= 60 ? "POSSIBLE FIT" : "LOW FIT";
+  const tone = score >= 80 ? "teal" : score >= 60 ? "amber" : "sienna";
+  const label = score >= 80 ? "Strong Fit" : score >= 60 ? "Possible Fit" : "Low Fit";
   const canApply = job.source === "Greenhouse" || job.source === "Lever";
   return (
-    <div style={{ background: "rgba(15,22,35,0.9)", border: "1px solid #1e293b", borderRadius: 11, padding: "13px 15px", display: "flex", alignItems: "center", gap: 13 }}>
-      <div style={{ minWidth: 42, height: 42, borderRadius: "50%", background: `${color}12`, border: `2px solid ${color}35`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color }}>{score}</div>
+    <div style={{
+      background: "var(--paper)", border: "1px solid rgba(36,28,18,.2)",
+      borderRadius: 6, padding: "15px 17px", display: "flex", alignItems: "center", gap: 16,
+      boxShadow: "0 14px 30px -22px rgba(0,0,0,.55), inset 0 0 0 1px rgba(36,28,18,.05)",
+    }}>
+      <div style={{
+        minWidth: 50, height: 50, borderRadius: "50%",
+        border: `2px solid var(--${tone})`, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", color: "var(--ink)",
+        background: `radial-gradient(circle, var(--paper) 55%, color-mix(in srgb, var(--${tone}) 18%, var(--paper)) 100%)`,
+      }}>
+        <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{score}</span>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 6, letterSpacing: ".12em", color: "var(--ink-soft)" }}>SCORE</span>
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, color: "var(--ink)", lineHeight: 1.15 }}>
           {job.title}
-          {job.live && <span style={{ fontSize: 8, color: "#34d399", background: "#34d39915", padding: "1px 6px", borderRadius: 6, marginLeft: 7, fontFamily: "monospace" }}>● LIVE</span>}
+          {job.live && <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "var(--teal)", border: "1px solid var(--teal)", padding: "1px 6px", borderRadius: 2, marginLeft: 9, verticalAlign: "middle", letterSpacing: ".1em" }}>● LIVE</span>}
         </div>
-        <div style={{ fontSize: 11, color: "#475569" }}>{job.company} · <span style={{ color: "#334155" }}>{job.source}</span></div>
-        {job.score_reason && <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>{job.score_reason}</div>}
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "var(--ink-soft)", marginTop: 4, letterSpacing: ".04em" }}>
+          {job.company} <span style={{ opacity: .5 }}>· via {job.source}</span>
+        </div>
+        {job.score_reason && <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 4, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>{job.score_reason}</div>}
         {job.matched_skills?.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
-            {job.matched_skills.map(s => <span key={s} style={{ fontSize: 8, color: "#34d399", background: "#34d39912", border: "1px solid #34d39922", padding: "1px 6px", borderRadius: 6, fontFamily: "monospace" }}>{s}</span>)}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+            {job.matched_skills.map(s => <span key={s} style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "var(--teal)", border: "1px solid color-mix(in srgb,var(--teal) 45%,transparent)", padding: "1px 6px", borderRadius: 2 }}>{s}</span>)}
           </div>
         )}
         {job.missing_skills?.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
-            {job.missing_skills.map(s => <span key={s} style={{ fontSize: 8, color: "#f59e0b", background: "#f59e0b10", border: "1px solid #f59e0b22", padding: "1px 6px", borderRadius: 6, fontFamily: "monospace" }}>Gap: {s}</span>)}
+            {job.missing_skills.map(s => <span key={s} style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: "var(--sienna)", border: "1px solid color-mix(in srgb,var(--sienna) 40%,transparent)", padding: "1px 6px", borderRadius: 2 }}>gap · {s}</span>)}
           </div>
         )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-        <span style={{ fontSize: 9, color, background: `${color}15`, padding: "2px 8px", borderRadius: 7, fontWeight: 700 }}>{label}</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 9 }}>
+        <Stamp tone={tone} rot={3}>{label}</Stamp>
         {canApply && (
           <button onClick={() => onApply(job)} disabled={applyState === "applying" || applyState === "done"}
-            style={{ fontSize: 9, color: applyState === "done" ? "#34d399" : "#34d399", background: applyState === "done" ? "#34d39912" : "rgba(52,211,153,.08)", border: "1px solid #34d39940", padding: "3px 9px", borderRadius: 7, cursor: applyState ? "default" : "pointer", fontFamily: "monospace", fontWeight: 700 }}>
-            {applyState === "applying" ? "APPLYING…" : applyState === "done" ? "✓ APPLIED" : "🤖 AUTO-APPLY"}
+            className="ghost-btn"
+            style={{ borderColor: "var(--teal)", color: applyState === "done" ? "var(--teal)" : "var(--ink)" }}>
+            {applyState === "applying" ? "▣ filing…" : applyState === "done" ? "✓ applied" : "➤ auto-apply"}
           </button>
         )}
         {job.url && (
-          <a href={job.url} target="_blank" rel="noreferrer" style={{ fontSize: 9, color: "#334155", textDecoration: "none", border: "1px solid #1e293b", padding: "2px 8px", borderRadius: 7 }}>VIEW →</a>
+          <a href={job.url} target="_blank" rel="noreferrer" className="ghost-btn" style={{ borderColor: "rgba(36,28,18,.3)", color: "var(--ink-soft)", textDecoration: "none" }}>
+            view ↗
+          </a>
         )}
       </div>
     </div>
@@ -103,11 +168,18 @@ function JobCard({ job, onApply, applyState }) {
 
 function SignalCard({ s }) {
   return (
-    <div style={{ background: "rgba(34,211,238,0.04)", border: "1px solid rgba(34,211,238,0.16)", borderRadius: 10, padding: "11px 14px", display: "flex", gap: 11, alignItems: "center" }}>
-      <div style={{ fontSize: 15 }}>📡</div>
+    <div style={{
+      background: "var(--paper)", border: "1px solid rgba(36,28,18,.18)",
+      borderLeft: "3px solid var(--violet)", borderRadius: 4,
+      padding: "13px 16px", display: "flex", gap: 13, alignItems: "center",
+      boxShadow: "0 12px 26px -22px rgba(0,0,0,.5)",
+    }}>
+      <span style={{ fontSize: 16, color: "var(--violet)" }}>❍</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, color: "#cbd5e1" }}>{s.signal}</div>
-        <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>{s.company} · <span style={{ color: "#22d3ee" }}>{s.source}</span></div>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: "var(--ink)", lineHeight: 1.4 }}>{s.signal}</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: "var(--ink-soft)", marginTop: 4, letterSpacing: ".06em" }}>
+          {s.company} · <span style={{ color: "var(--violet)" }}>{s.source}</span>
+        </div>
       </div>
     </div>
   );
@@ -115,19 +187,23 @@ function SignalCard({ s }) {
 
 function ApplicationCard({ a }) {
   const ok = a.status === "submitted" || a.status === "simulated";
-  const color = ok ? "#34d399" : "#f87171";
+  const tone = ok ? "teal" : "sienna";
   return (
-    <div style={{ background: `${color}08`, border: `1px solid ${color}33`, borderRadius: 12, padding: "16px 18px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>🤖 {a.title} @ {a.company}</div>
-        <span style={{ fontSize: 9, color, background: `${color}18`, padding: "3px 10px", borderRadius: 8, fontWeight: 700, fontFamily: "monospace" }}>
-          {ok ? "✓ AUTONOMOUSLY APPLIED" : "FLAGGED"}
-        </span>
+    <div style={{
+      background: "var(--paper)", border: `1px solid color-mix(in srgb,var(--${tone}) 40%,transparent)`,
+      borderRadius: 6, padding: "17px 19px",
+      boxShadow: `0 16px 34px -22px color-mix(in srgb,var(--${tone}) 60%,transparent), inset 0 0 0 1px rgba(36,28,18,.05)`,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 9, gap: 12 }}>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2 }}>
+          {a.title} <span style={{ color: "var(--ink-soft)", fontWeight: 400 }}>— {a.company}</span>
+        </div>
+        <Stamp tone={tone} rot={-4}>{ok ? "✓ Autonomously Applied" : "Flagged"}</Stamp>
       </div>
-      <div style={{ fontSize: 11, color: "#64748b" }}>{a.detail}</div>
-      <div style={{ fontSize: 11, color: "#475569", marginTop: 5, fontFamily: "monospace" }}>
-        ATS: <span style={{ color: "#94a3b8" }}>{a.ats}</span>
-        {a.confirmation && <> · Confirmation: <span style={{ color }}>{a.confirmation}</span></>}
+      <div style={{ fontSize: 12, color: "var(--ink-soft)", fontFamily: "'Fraunces', serif", fontStyle: "italic" }}>{a.detail}</div>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "var(--ink-soft)", marginTop: 7, letterSpacing: ".04em" }}>
+        ATS <span style={{ color: "var(--ink)" }}>{a.ats}</span>
+        {a.confirmation && <> &nbsp;·&nbsp; CONF <span style={{ color: `var(--${tone})` }}>{a.confirmation}</span></>}
       </div>
     </div>
   );
@@ -141,14 +217,28 @@ function MessageCard({ msg }) {
     setTimeout(() => setCopied(false), 1500);
   }
   return (
-    <div style={{ background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.18)", borderRadius: 11, padding: "14px 16px", marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{msg.company}</div>
-        <button onClick={copy} style={{ fontSize: 9, color: copied ? "#34d399" : "#334155", background: "none", border: "1px solid #1e293b", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontFamily: "monospace" }}>
-          {copied ? "✓ COPIED" : "COPY"}
+    <div style={{
+      background: "var(--paper)", border: "1px solid rgba(36,28,18,.18)",
+      borderRadius: 6, padding: "16px 18px", marginBottom: 10, position: "relative",
+      boxShadow: "0 12px 28px -22px rgba(0,0,0,.5)",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+        <span style={{
+          fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700,
+          color: "var(--violet)", letterSpacing: ".2em", textTransform: "uppercase",
+        }}>{msg.company}</span>
+        <button onClick={copy} className="ghost-btn" style={{ borderColor: "rgba(36,28,18,.25)", color: copied ? "var(--teal)" : "var(--ink-soft)" }}>
+          {copied ? "✓ copied" : "copy"}
         </button>
       </div>
-      <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7, fontStyle: "italic" }}>"{msg.message}"</div>
+      <div style={{
+        fontFamily: "'Fraunces', serif", fontSize: 15, color: "var(--ink)",
+        lineHeight: 1.7, fontStyle: "italic",
+      }}>
+        <span style={{ color: "var(--amber)", fontSize: 26, lineHeight: 0, verticalAlign: "-8px", marginRight: 2 }}>“</span>
+        {msg.message}
+        <span style={{ color: "var(--amber)", fontSize: 26, lineHeight: 0, verticalAlign: "-12px", marginLeft: 2 }}>”</span>
+      </div>
     </div>
   );
 }
@@ -168,9 +258,9 @@ export default function App() {
   const [error, setError] = useState(null);
   const [applyStates, setApplyStates] = useState({});
 
-  function log(agent, msg, agentColor, color) {
+  function log(agent, msg, _c, color) {
     const t = new Date().toLocaleTimeString("en-US", { hour12: false });
-    setLogs(l => [...l, { time: t, agent, msg, agentColor, color }]);
+    setLogs(l => [...l, { time: t, agent, msg, color: color === "#34d399" ? "done" : null }]);
   }
 
   async function onResume(file) {
@@ -207,7 +297,7 @@ export default function App() {
       const body = { role, companies: companiesList, resume_text: resumeText };
 
       setStatus(s => ({ ...s, discovery: "running" }));
-      log("DiscoveryAgent", `Scraping live boards for "${role}"...`, "#38bdf8");
+      log("DiscoveryAgent", `Scanning live boards for "${role}"…`);
 
       const fetchPromise = fetch(`${API}/run-agents`, {
         method: "POST",
@@ -217,23 +307,23 @@ export default function App() {
 
       await new Promise(r => setTimeout(r, 1200));
       setStatus(s => ({ ...s, discovery: "done", verification: "running" }));
-      log("DiscoveryAgent", "Live job listings collected", "#38bdf8", "#34d399");
-      log("VerificationAgent", "Scoring realness of each posting...", "#f59e0b");
+      log("DiscoveryAgent", "Live job listings collected", null, "#34d399");
+      log("VerificationAgent", "Assaying realness of each posting…");
 
       await new Promise(r => setTimeout(r, 900));
       setStatus(s => ({ ...s, verification: "done", signal: "running" }));
-      log("VerificationAgent", "Realness scores assigned", "#f59e0b", "#34d399");
-      log("SignalAgent", "Scraping recruiter hiring signals...", "#22d3ee");
+      log("VerificationAgent", "Realness scores assigned", null, "#34d399");
+      log("SignalAgent", "Scraping recruiter hiring signals…");
 
       await new Promise(r => setTimeout(r, 800));
       setStatus(s => ({ ...s, signal: "done", outreach: "running" }));
-      log("SignalAgent", "Hiring intent signals gathered", "#22d3ee", "#34d399");
-      log("OutreachAgent", "Drafting recruiter messages via Qwen...", "#a78bfa");
+      log("SignalAgent", "Hiring intent signals gathered", null, "#34d399");
+      log("OutreachAgent", "Composing dispatches via Z.ai GLM…");
 
       await new Promise(r => setTimeout(r, 800));
       setStatus(s => ({ ...s, outreach: "done", application: "running" }));
-      log("OutreachAgent", "Messages drafted", "#a78bfa", "#34d399");
-      log("ApplicationAgent", "Autonomously applying to top job...", "#34d399");
+      log("OutreachAgent", "Dispatches drafted", null, "#34d399");
+      log("ApplicationAgent", "Autonomously applying to top job…");
 
       const res = await fetchPromise;
       if (!res.ok) throw new Error(`Backend error: ${res.status}`);
@@ -241,10 +331,10 @@ export default function App() {
 
       setStatus(s => ({ ...s, application: "done" }));
       const app0 = data.applications?.[0];
-      log("ApplicationAgent", app0 ? `Applied to ${app0.company} — ${app0.confirmation || app0.status}` : "No auto-apply target", "#34d399", "#34d399");
+      log("ApplicationAgent", app0 ? `Applied to ${app0.company} — ${app0.confirmation || app0.status}` : "No auto-apply target", null, "#34d399");
 
       if (data.logs?.length) {
-        data.logs.slice(-12).forEach(l => log(l.agent, l.message, "#475569"));
+        data.logs.slice(-12).forEach(l => log(l.agent, l.message));
       }
 
       setResult(data);
@@ -275,173 +365,270 @@ export default function App() {
     }
   }
 
-  const realJobs  = result?.jobs?.filter(j => (j.score ?? 70) >= 80) ?? [];
-  const staleJobs = result?.jobs?.filter(j => (j.score ?? 70) < 60) ?? [];
+  const realJobs = result?.jobs?.filter(j => (j.score ?? 70) >= 80) ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#020817", color: "#f1f5f9", fontFamily: "'Space Grotesk', sans-serif", padding: "40px 24px", overflow: "hidden", position: "relative" }}>
+    <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", padding: "52px 24px 60px" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0}body{background:#020817}
-        @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        @keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-25px)}}
-        @keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,20px)}}
-        .fade-up{animation:fadeup .55s ease forwards}
-        .run-btn{background:linear-gradient(135deg,#38bdf8,#818cf8,#34d399);background-size:200%;color:#020817;border:none;border-radius:12px;padding:14px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.06em;transition:all .3s;width:100%;box-shadow:0 0 28px #38bdf820}
-        .run-btn:hover{background-position:right;transform:scale(1.02);box-shadow:0 0 44px #38bdf840}
-        .run-btn:disabled{background:#1e293b;color:#334155;box-shadow:none;cursor:not-allowed;transform:none}
-        input{background:rgba(15,22,35,.9);border:1px solid #1e293b;border-radius:10px;padding:12px 15px;color:#e2e8f0;font-size:14px;font-family:inherit;outline:none;transition:border .2s;width:100%}
-        input:focus{border-color:#38bdf840}input::placeholder{color:#1e293b}
-        ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
-        .upload{border:1.5px dashed #1e293b;border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .2s}
-        .upload:hover{border-color:#38bdf840;background:rgba(56,189,248,.03)}
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+        :root{
+          --void:#080611; --cosmos:#150f30; --cosmos-2:#1d1442;
+          --paper:#efe4cb; --paper-2:#e4d6b6;
+          --ink:#241c12; --ink-soft:#6f6048;
+          --amber:#e0a23f; --sienna:#cf6a3f; --teal:#4aa599;
+          --violet:#9a72d4; --bone:#ece0c8; --bone-soft:#9b8d72;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body,#root{background:var(--void)}
+        body{font-family:'Space Grotesk',sans-serif;color:var(--bone)}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes spin-r{to{transform:rotate(-360deg)}}
+        @keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(26px,-30px)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+        @keyframes fadeup{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes scanmove{0%{top:-2px}100%{top:100%}}
+        @keyframes twinkle{0%,100%{opacity:.45}50%{opacity:.9}}
+        .fade-up{animation:fadeup .6s cubic-bezier(.2,.7,.3,1) forwards}
+        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:scanmove 1.8s linear infinite}
+        .crt{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(224,162,63,.05) 0 1px,transparent 1px 3px);border-radius:6px}
+        .run-btn{width:100%;border:none;cursor:pointer;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--ink);padding:16px 0;border-radius:5px;background:linear-gradient(135deg,var(--amber),var(--sienna));box-shadow:0 0 0 1px rgba(36,28,18,.25),inset 0 1px 0 rgba(255,255,255,.45),0 16px 40px -16px rgba(224,162,63,.7);transition:transform .25s,box-shadow .25s}
+        .run-btn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(36,28,18,.25),inset 0 1px 0 rgba(255,255,255,.5),0 22px 50px -16px rgba(224,162,63,.85)}
+        .run-btn:disabled{background:var(--paper-2);color:var(--ink-soft);box-shadow:0 0 0 1px rgba(36,28,18,.2);cursor:not-allowed;transform:none}
+        .ghost-btn{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:transparent;border:1px solid;border-radius:3px;padding:4px 10px;cursor:pointer;transition:background .2s}
+        .ghost-btn:hover{background:rgba(36,28,18,.06)}
+        .field{width:100%;background:var(--paper);border:1px solid rgba(36,28,18,.28);border-radius:5px;padding:13px 15px;color:var(--ink);font-family:'Fraunces',serif;font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s}
+        .field:focus{border-color:var(--sienna);box-shadow:0 0 0 3px color-mix(in srgb,var(--sienna) 22%,transparent)}
+        .field::placeholder{color:var(--ink-soft);opacity:.55;font-style:italic}
+        .drop{border:1.5px dashed rgba(36,28,18,.35);border-radius:6px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:color-mix(in srgb,var(--paper) 70%,transparent)}
+        .drop:hover{border-color:var(--sienna);background:color-mix(in srgb,var(--paper) 90%,transparent)}
+        ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:rgba(224,162,63,.4);border-radius:2px}
+        a{color:inherit}
       `}</style>
 
-      <div style={{ position:"fixed", width:550, height:550, borderRadius:"50%", background:"radial-gradient(circle,#38bdf810 0%,transparent 65%)", top:-180, left:-180, filter:"blur(60px)", pointerEvents:"none", zIndex:0, animation:"orb1 13s ease-in-out infinite" }} />
-      <div style={{ position:"fixed", width:480, height:480, borderRadius:"50%", background:"radial-gradient(circle,#a78bfa10 0%,transparent 65%)", bottom:-120, right:-120, filter:"blur(60px)", pointerEvents:"none", zIndex:0, animation:"orb2 10s ease-in-out infinite" }} />
+      {/* ── cosmic field ─────────────────────────────────────── */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "radial-gradient(ellipse at 50% 8%, var(--cosmos-2) 0%, var(--cosmos) 38%, var(--void) 78%)" }} />
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: .7,
+        backgroundImage: `radial-gradient(1px 1px at 18% 22%, #fff8e7 60%, transparent),
+          radial-gradient(1px 1px at 72% 14%, #ffe9c4 60%, transparent),
+          radial-gradient(1.4px 1.4px at 41% 67%, #fff 60%, transparent),
+          radial-gradient(1px 1px at 88% 52%, #ffe4b5 60%, transparent),
+          radial-gradient(1px 1px at 9% 78%, #fff 60%, transparent),
+          radial-gradient(1.2px 1.2px at 58% 88%, #ffeccb 60%, transparent),
+          radial-gradient(1px 1px at 33% 9%, #fff 60%, transparent)`,
+        backgroundSize: "520px 520px,440px 440px,600px 600px,500px 500px,560px 560px,480px 480px,620px 620px",
+        animation: "twinkle 6s ease-in-out infinite",
+      }} />
+      {/* retro sun */}
+      <div style={{
+        position: "fixed", width: 720, height: 720, borderRadius: "50%", left: "50%", top: -430,
+        transform: "translateX(-50%)", zIndex: 0, pointerEvents: "none",
+        background: "radial-gradient(circle, color-mix(in srgb,var(--amber) 32%,transparent) 0%, color-mix(in srgb,var(--sienna) 20%,transparent) 38%, transparent 66%)",
+        filter: "blur(8px)", animation: "drift 16s ease-in-out infinite",
+      }} />
+      {/* orbital rings */}
+      <div style={{ position: "fixed", left: "50%", top: 150, transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
+        {[420, 620, 860].map((d, i) => (
+          <div key={d} style={{
+            position: "absolute", width: d, height: d, left: -d / 2, top: -d / 2,
+            border: `1px solid color-mix(in srgb,var(--amber) ${14 - i * 3}%,transparent)`,
+            borderRadius: "50%", borderTopColor: `color-mix(in srgb,var(--amber) ${26 - i * 5}%,transparent)`,
+            animation: `${i % 2 ? "spin-r" : "spin"} ${44 + i * 20}s linear infinite`,
+          }} />
+        ))}
+      </div>
+      <div style={{ position: "fixed", bottom: -180, right: -140, width: 480, height: 480, borderRadius: "50%", zIndex: 0, pointerEvents: "none", background: "radial-gradient(circle, color-mix(in srgb,var(--violet) 22%,transparent) 0%, transparent 64%)", filter: "blur(20px)" }} />
 
-      <div style={{ position:"relative", zIndex:1, maxWidth:840, margin:"0 auto" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
-        <div style={{ textAlign:"center", marginBottom:38 }} className="fade-up">
-          <div style={{ display:"inline-flex", alignItems:"center", gap:7, fontSize:10, fontWeight:700, letterSpacing:".2em", color:"#38bdf8", background:"rgba(56,189,248,.06)", border:"1px solid rgba(56,189,248,.18)", padding:"6px 16px", borderRadius:20, marginBottom:22, fontFamily:"monospace" }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:"#34d399", boxShadow:"0 0 8px #34d39988", display:"inline-block", animation:"pulse 2s infinite" }} />
-            AGENT FORGE 2026 · SUNNYVALE, CA
+        {/* ── masthead ─────────────────────────────────────── */}
+        <header className="fade-up" style={{ textAlign: "center", marginBottom: 42 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+            <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,color-mix(in srgb,var(--amber) 60%,transparent))" }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, letterSpacing: ".34em", color: "var(--bone-soft)", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              Issue Nº MMXXVI · Agent Forge · Sunnyvale CA
+            </span>
+            <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,color-mix(in srgb,var(--amber) 60%,transparent),transparent)" }} />
           </div>
-          <h1 style={{ fontSize:62, fontWeight:700, letterSpacing:"-.04em", marginBottom:10, lineHeight:1, background:"linear-gradient(135deg,#f1f5f9 0%,#38bdf8 35%,#818cf8 65%,#34d399 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
-            AgentCheck
+          <h1 style={{
+            fontFamily: "'Fraunces', serif", fontSize: 84, fontWeight: 900, lineHeight: .92,
+            letterSpacing: "-.02em", color: "var(--bone)",
+            textShadow: "0 2px 0 rgba(0,0,0,.35), 0 0 44px color-mix(in srgb,var(--amber) 30%,transparent)",
+          }}>
+            Agent<span style={{ fontStyle: "italic", color: "var(--amber)" }}>Check</span>
           </h1>
-          <p style={{ color:"#334155", fontSize:12, letterSpacing:".04em", fontFamily:"monospace" }}>
-            Autonomous hiring intelligence · scrapes live jobs · applies for you
+          <p style={{
+            fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 17,
+            color: "var(--bone-soft)", marginTop: 12, letterSpacing: ".02em",
+          }}>
+            An autonomous hiring observatory — it reads, it hunts, it applies.
           </p>
-        </div>
+          <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <span style={{ width: 90, height: 1, background: "var(--amber)", opacity: .4 }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--teal)", boxShadow: "0 0 10px var(--teal)", animation: "pulse 2.4s infinite" }} />
+            <span style={{ width: 90, height: 1, background: "var(--amber)", opacity: .4 }} />
+          </div>
+        </header>
 
         {phase === "input" && (
-          <div className="fade-up" style={{ background:"rgba(15,22,35,.92)", border:"1px solid #1e293b", borderRadius:18, padding:26, backdropFilter:"blur(20px)" }}>
-            <div style={{ marginBottom:18 }}>
-              <div style={{ fontSize:10, color:"#475569", fontWeight:700, letterSpacing:".12em", marginBottom:7, fontFamily:"monospace" }}>RESUME — upload to auto-detect role & matching companies</div>
-              <div className="upload" onClick={() => document.getElementById("r").click()}>
-                <input id="r" type="file" accept=".pdf,.doc,.docx,.txt" style={{ display:"none" }} onChange={e => onResume(e.target.files[0])} />
+          <div className="fade-up" style={{
+            background: "var(--paper)", border: "1px solid rgba(36,28,18,.25)",
+            borderRadius: 10, padding: 30,
+            boxShadow: "0 40px 90px -40px rgba(0,0,0,.85), inset 0 0 0 1px rgba(36,28,18,.06), inset 0 0 80px rgba(36,28,18,.04)",
+          }}>
+            <div style={{ marginBottom: 22 }}>
+              <Rule n="01" label="Resume Intake" tone="sienna" />
+              <div className="drop" onClick={() => document.getElementById("r").click()}>
+                <input id="r" type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: "none" }} onChange={e => onResume(e.target.files[0])} />
                 {analyzing
-                  ? <div style={{ color:"#38bdf8", fontSize:12 }}>⟳ Analyzing resume...</div>
+                  ? <div style={{ color: "var(--sienna)", fontFamily: "'Fraunces',serif", fontStyle: "italic", fontSize: 15 }}>✦ Reading the document…</div>
                   : resumeFile
-                  ? <div style={{ color:"#34d399", fontSize:12 }}>✓ {resumeFile.name}</div>
-                  : <div style={{ color:"#334155", fontSize:12 }}>Drop resume or click to upload <span style={{ color:"#1e293b" }}>· PDF / DOC / TXT</span></div>
+                  ? <div style={{ color: "var(--teal)", fontFamily: "'Space Mono',monospace", fontSize: 12, letterSpacing: ".06em" }}>✓ {resumeFile.name}</div>
+                  : <div style={{ color: "var(--ink-soft)", fontFamily: "'Fraunces',serif", fontStyle: "italic", fontSize: 15 }}>Drop a résumé, or click to select <span style={{ opacity: .55 }}>· pdf / doc / txt</span></div>
                 }
               </div>
               {analysis && (
-                <div style={{ marginTop:12, background:"rgba(56,189,248,.04)", border:"1px solid rgba(56,189,248,.16)", borderRadius:10, padding:"12px 14px" }}>
-                  <div style={{ fontSize:11, color:"#38bdf8", fontWeight:700, marginBottom:6 }}>📄 {analysis.summary}</div>
-                  <div style={{ fontSize:11, color:"#64748b" }}>Detected role: <span style={{ color:"#e2e8f0" }}>{analysis.inferred_role}</span></div>
+                <div style={{ marginTop: 14, background: "var(--paper-2)", border: "1px solid rgba(36,28,18,.18)", borderRadius: 6, padding: "14px 16px" }}>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontStyle: "italic", fontSize: 14, color: "var(--ink)", marginBottom: 8 }}>“{analysis.summary}”</div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "var(--ink-soft)", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                    Detected role — <span style={{ color: "var(--sienna)" }}>{analysis.inferred_role}</span>
+                  </div>
                   {analysis.skills?.length > 0 && (
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
-                      {analysis.skills.map(s => <span key={s} style={{ fontSize:9, color:"#94a3b8", background:"#1e293b", padding:"2px 8px", borderRadius:6, fontFamily:"monospace" }}>{s}</span>)}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
+                      {analysis.skills.map(s => <span key={s} style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--ink)", border: "1px solid rgba(36,28,18,.3)", padding: "2px 8px", borderRadius: 2 }}>{s}</span>)}
                     </div>
                   )}
                 </div>
               )}
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:18 }}>
+
+            <Rule n="02" label="Search Parameters" tone="amber" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize:10, color:"#475569", fontWeight:700, letterSpacing:".12em", marginBottom:7, fontFamily:"monospace" }}>TARGET ROLE</div>
-                <input value={role} onChange={e => setRole(e.target.value)} onKeyDown={e => e.key==="Enter" && run()} placeholder='"ML Engineer"' />
+                <label style={{ display: "block", fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--ink-soft)", letterSpacing: ".18em", textTransform: "uppercase", marginBottom: 7 }}>Target Role</label>
+                <input className="field" value={role} onChange={e => setRole(e.target.value)} onKeyDown={e => e.key === "Enter" && run()} placeholder="Machine Learning Engineer" />
               </div>
               <div>
-                <div style={{ fontSize:10, color:"#475569", fontWeight:700, letterSpacing:".12em", marginBottom:7, fontFamily:"monospace" }}>COMPANIES HIRING (auto-filled)</div>
-                <input value={companies} onChange={e => setCompanies(e.target.value)} placeholder="Anthropic, Perplexity, OpenAI" />
+                <label style={{ display: "block", fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--ink-soft)", letterSpacing: ".18em", textTransform: "uppercase", marginBottom: 7 }}>Companies · auto-filled</label>
+                <input className="field" value={companies} onChange={e => setCompanies(e.target.value)} placeholder="Anthropic, OpenAI, Perplexity" />
               </div>
             </div>
-            {error && <div style={{ background:"rgba(239,68,68,.07)", border:"1px solid rgba(239,68,68,.2)", borderRadius:9, padding:"10px 14px", color:"#f87171", fontSize:12, marginBottom:14 }}>⚠ {error}</div>}
-            <button className="run-btn" onClick={run} disabled={!role.trim()}>RUN AGENTS →</button>
+
+            {error && (
+              <div style={{ background: "color-mix(in srgb,var(--sienna) 12%,var(--paper))", border: "1px solid color-mix(in srgb,var(--sienna) 45%,transparent)", borderRadius: 5, padding: "11px 15px", color: "var(--sienna)", fontSize: 12, marginBottom: 16, fontFamily: "'Space Mono',monospace" }}>
+                ⚠ {error}
+              </div>
+            )}
+            <button className="run-btn" onClick={run} disabled={!role.trim()}>Engage Agents →</button>
           </div>
         )}
 
         {(phase === "running" || phase === "done") && (
           <div className="fade-up">
-            <div style={{ display:"flex", gap:8, marginBottom:14 }}>
-              {AGENTS.map(a => <AgentCard key={a.id} agent={a} status={status[a.id]} />)}
+            <div style={{ display: "flex", gap: 9, marginBottom: 16 }}>
+              {AGENTS.map((a, i) => <AgentCard key={a.id} agent={a} status={status[a.id]} idx={i} />)}
             </div>
 
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-              <div style={{ fontSize:10, color:"#334155", fontFamily:"monospace" }}>
-                {phase === "running" ? `⏱ ${elapsed}s...` : `✓ Done in ${elapsed}s`}
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "var(--bone-soft)", letterSpacing: ".1em" }}>
+                {phase === "running" ? `◴ elapsed ${elapsed}s` : `✓ completed in ${elapsed}s`}
+              </span>
               {phase === "done" && (
-                <button onClick={() => { setPhase("input"); setStatus({ discovery:"idle", verification:"idle", signal:"idle", outreach:"idle", application:"idle" }); setElapsed(0); }}
-                  style={{ fontSize:10, color:"#38bdf8", background:"none", border:"1px solid #38bdf830", borderRadius:7, padding:"3px 12px", cursor:"pointer", fontFamily:"monospace" }}>
-                  ← New Search
+                <button onClick={() => { setPhase("input"); setStatus({ discovery: "idle", verification: "idle", signal: "idle", outreach: "idle", application: "idle" }); setElapsed(0); }}
+                  className="ghost-btn" style={{ borderColor: "color-mix(in srgb,var(--amber) 50%,transparent)", color: "var(--amber)" }}>
+                  ← new search
                 </button>
               )}
             </div>
 
-            <div style={{ marginBottom:14 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#334155", letterSpacing:".14em", marginBottom:7, fontFamily:"monospace" }}>▸ LIVE ACTIVITY FEED</div>
+            <div style={{ marginBottom: 18 }}>
+              <Rule n="✶" label="Mission Telemetry" tone="amber" />
               <Feed logs={logs} />
             </div>
 
             {result && (
               <>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:14 }}>
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(4,1fr)",
+                  background: "var(--paper)", border: "1px solid rgba(36,28,18,.22)",
+                  borderRadius: 8, marginBottom: 20, overflow: "hidden",
+                  boxShadow: "0 20px 44px -28px rgba(0,0,0,.6)",
+                }}>
                   {[
-                    { label:"JOBS FOUND",    value: result.jobs?.length ?? 0,           color:"#38bdf8" },
-                    { label:"VERIFIED REAL", value: realJobs.length,                    color:"#34d399" },
-                    { label:"HIRING SIGNALS",value: result.signals?.length ?? 0,        color:"#22d3ee" },
-                    { label:"AUTO-APPLIED",  value: result.applications?.length ?? 0,   color:"#a78bfa" },
-                  ].map(s => (
-                    <div key={s.label} style={{ background:"rgba(15,22,35,.9)", border:`1px solid ${s.color}22`, borderRadius:11, padding:"14px 12px", textAlign:"center" }}>
-                      <div style={{ fontSize:26, fontWeight:700, color:s.color }}>{s.value}</div>
-                      <div style={{ fontSize:8, color:"#334155", letterSpacing:".1em", fontFamily:"monospace", marginTop:4 }}>{s.label}</div>
+                    { label: "Jobs Found",     value: result.jobs?.length ?? 0,         tone: "ink" },
+                    { label: "Verified Real",  value: realJobs.length,                  tone: "teal" },
+                    { label: "Hiring Signals", value: result.signals?.length ?? 0,      tone: "violet" },
+                    { label: "Auto-Applied",   value: result.applications?.length ?? 0, tone: "sienna" },
+                  ].map((s, i) => (
+                    <div key={s.label} style={{ padding: "20px 14px", textAlign: "center", borderLeft: i ? "1px solid rgba(36,28,18,.16)" : "none" }}>
+                      <div style={{ fontFamily: "'Fraunces',serif", fontSize: 40, fontWeight: 900, color: s.tone === "ink" ? "var(--ink)" : `var(--${s.tone})`, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "var(--ink-soft)", letterSpacing: ".18em", textTransform: "uppercase", marginTop: 7 }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
 
                 {result.applications?.length > 0 && (
-                  <div style={{ marginBottom:14 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#34d399", letterSpacing:".14em", marginBottom:9, fontFamily:"monospace" }}>▸ AUTONOMOUS APPLICATION</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <Rule n="03" label="Autonomous Application" tone="teal" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                       {result.applications.map((a, i) => <ApplicationCard key={i} a={a} />)}
                     </div>
                   </div>
                 )}
 
                 {result.jobs?.length > 0 && (
-                  <div style={{ marginBottom:14 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#38bdf8", letterSpacing:".14em", marginBottom:9, fontFamily:"monospace" }}>▸ JOB LISTINGS</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <Rule n="04" label="Job Listings" tone="amber" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                       {result.jobs.map((j, i) => <JobCard key={i} job={j} onApply={applyToJob} applyState={applyStates[`${j.company}-${j.title}`]} />)}
                     </div>
                   </div>
                 )}
 
                 {result.signals?.length > 0 && (
-                  <div style={{ marginBottom:14 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#22d3ee", letterSpacing:".14em", marginBottom:9, fontFamily:"monospace" }}>▸ RECRUITER HIRING SIGNALS</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <Rule n="05" label="Recruiter Hiring Signals" tone="violet" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                       {result.signals.map((s, i) => <SignalCard key={i} s={s} />)}
                     </div>
                   </div>
                 )}
 
                 {result.messages?.length > 0 && (
-                  <div style={{ marginBottom:14 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#a78bfa", letterSpacing:".14em", marginBottom:9, fontFamily:"monospace" }}>▸ RECRUITER OUTREACH</div>
+                  <div style={{ marginBottom: 20 }}>
+                    <Rule n="06" label="Recruiter Outreach · Z.ai GLM" tone="violet" />
                     {result.messages.map((m, i) => <MessageCard key={i} msg={m} />)}
                   </div>
                 )}
 
-                <div style={{ background:"rgba(52,211,153,.04)", border:"1px solid rgba(52,211,153,.14)", borderRadius:11, padding:"13px 16px" }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#34d399", letterSpacing:".14em", marginBottom:6, fontFamily:"monospace" }}>▸ MEMORY AGENT — STORED</div>
-                  <div style={{ fontSize:12, color:"#475569" }}>🧠 Targeting <span style={{ color:"#64748b" }}>{role}</span> · {companies || "AI companies"} · {result.jobs?.length ?? 0} listings indexed via Evermind</div>
+                <div style={{
+                  background: "var(--paper)", border: "1px solid rgba(36,28,18,.2)",
+                  borderRadius: 6, padding: "15px 18px", display: "flex", alignItems: "center", gap: 13,
+                }}>
+                  <span style={{ fontSize: 18, color: "var(--violet)" }}>✺</span>
+                  <div>
+                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--ink-soft)", letterSpacing: ".18em", textTransform: "uppercase", marginBottom: 4 }}>Memory · Evermind</div>
+                    <div style={{ fontFamily: "'Fraunces',serif", fontSize: 14, color: "var(--ink)" }}>
+                      Targeting <span style={{ fontStyle: "italic", color: "var(--sienna)" }}>{role}</span> · {companies || "AI companies"} · {result.jobs?.length ?? 0} listings indexed
+                    </div>
+                  </div>
                 </div>
               </>
             )}
           </div>
         )}
 
-        <div style={{ textAlign:"center", marginTop:44, color:"#0f172a", fontSize:9, fontFamily:"monospace", letterSpacing:".12em" }}>
-          BRIGHT DATA · QWEN CLOUD · AGENTFIELD · EVERMIND · ACTIONBOOK · TOKENROUTER · ZEABUR
-        </div>
+        {/* ── colophon ─────────────────────────────────────── */}
+        <footer style={{ marginTop: 52, textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+            <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,rgba(224,162,63,.35))" }} />
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--bone-soft)", letterSpacing: ".26em", textTransform: "uppercase" }}>Powered By</span>
+            <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(224,162,63,.35),transparent)" }} />
+          </div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--bone-soft)", letterSpacing: ".22em", textTransform: "uppercase", opacity: .8 }}>
+            TokenRouter · Z.ai GLM · Bright Data · AgentField · Evermind · Actionbook · Zeabur
+          </div>
+        </footer>
       </div>
     </div>
   );
