@@ -1,4 +1,3 @@
-import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,20 +8,12 @@ from routes.jobs import router as jobs_router
 
 app = FastAPI(title="AgentCheck API", version="0.1.0")
 
-# CORS — allow frontend dev server and any deployed origin
-_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-]
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "")
-if frontend_origin:
-    _origins.append(frontend_origin)
-
+# CORS — wide open for demo robustness (any frontend host/port can call us).
+# allow_credentials must be False when allow_origins is "*".
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

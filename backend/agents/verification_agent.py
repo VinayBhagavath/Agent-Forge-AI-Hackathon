@@ -1,52 +1,43 @@
+"""Verification agent — company-agnostic realness scoring.
+
+Scores each posting purely from its own observable signals (was it scraped
+live from a real ATS, does it have a valid application URL, is the title
+reasonable). No hardcoded company allowlist — a job is "real" because it was
+just fetched from a live board, not because of who posted it.
+"""
+
 from models.schemas import Job
 from utils.logger import add_log
 
 AGENT = "VerificationAgent"
-
-_AI_STARTUPS = {
-    "anthropic", "perplexity", "openai", "mistral ai", "cohere",
-    "groq", "together ai", "scale ai", "hugging face", "runway ml",
-    "deepmind", "inflection", "adept", "character ai", "stability ai",
-}
-
-_RECENT_COMPANIES = {
-    "anthropic", "perplexity", "groq", "mistral ai", "together ai",
-    "runway ml", "inflection", "character ai",
-}
-
-_ACTIVE_ATS = {"Greenhouse", "Ashby", "Lever"}
+_LIVE_ATS = {"Greenhouse", "Lever", "Ashby", "Workable"}
 
 
 def verify_job(job: Job) -> dict:
-    add_log(AGENT, f"Verifying job: {job.title} at {job.company}")
+    add_log(AGENT, f"Verifying: {job.title} @ {job.company}")
 
-    score = 50  # baseline
+    score = 55
     reasons = []
 
-    company_lower = job.company.lower()
+    if job.live:
+        score += 30
+        reasons.append("scraped live from real ATS")
+    if job.source in _LIVE_ATS:
+        score += 8
+        reasons.append(f"{job.source} board")
+    if job.url.startswith("http"):
+        score += 7
+        reasons.append("valid application link")
 
-    if company_lower in _RECENT_COMPANIES:
-        score += 20
-        reasons.append("recently funded company")
-
-    if company_lower in _AI_STARTUPS:
-        score += 20
-        reasons.append("active AI startup")
-
-    if job.source in _ACTIVE_ATS:
-        score += 15
-        reasons.append(f"live {job.source} ATS")
-
-    if len(job.title) > 40:
+    tl = len(job.title)
+    if tl == 0:
+        score -= 25
+        reasons.append("missing title")
+    elif tl > 70:
         score -= 10
         reasons.append("long/vague title")
 
-    if company_lower not in _AI_STARTUPS and company_lower not in _RECENT_COMPANIES:
-        score -= 20
-        reasons.append("lesser-known company")
-
     score = max(0, min(100, score))
-    reason = ", ".join(reasons).capitalize() if reasons else "Standard posting"
-
+    reason = ", ".join(reasons).capitalize() if reasons else "Limited signals"
     add_log(AGENT, f"Scored {job.company} — {score}/100 ({reason})")
     return {"score": score, "reason": reason}

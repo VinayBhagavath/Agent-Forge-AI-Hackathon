@@ -1,79 +1,37 @@
-import os
-import httpx
+"""Recruiter outreach generation.
+
+Uses the central LLM service (TokenRouter primary, Qwen secondary). If no LLM
+is reachable, returns a clean templated message so the demo never breaks.
+"""
+
+from services.llm_service import llm_chat
 from utils.logger import add_log
 
-AGENT = "QwenService"
-
-_MOCK_MESSAGES = {
-    "default": (
-        "Hi, I came across the {role} opening at {company} and I'm genuinely excited about "
-        "the work your team is doing. I'd love to connect and learn more about the role — "
-        "happy to share my resume and portfolio. Looking forward to hearing from you!"
-    )
-}
+AGENT = "OutreachLLM"
 
 
-def _build_prompt(company: str, role: str) -> str:
+def _fallback(company: str, role: str) -> str:
     return (
-        f"Write a concise, friendly recruiter outreach message for a student applying to a "
-        f"{role} position at {company}. Keep it to 2-4 sentences. Sound human, not generic."
+        f"Hi, I came across the {role} opening at {company} and I'm genuinely "
+        f"excited about the work your team is doing. I'd love to connect and "
+        f"learn more — happy to share my resume and portfolio. Thanks for your time!"
     )
 
 
 def generate_outreach(company: str, role: str) -> str:
-    add_log(AGENT, f"Generating outreach message for {company} ({role})")
-
-    api_key = os.getenv("QWEN_API_KEY", "")
-    base_url = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-
-    if api_key:
-        try:
-            response = httpx.post(
-                f"{base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "qwen-plus",
-                    "messages": [{"role": "user", "content": _build_prompt(company, role)}],
-                    "max_tokens": 150,
-                    "temperature": 0.7,
-                },
-                timeout=8.0,
-            )
-            response.raise_for_status()
-            message = response.json()["choices"][0]["message"]["content"].strip()
-            add_log(AGENT, f"Outreach generated via Qwen API for {company}")
-            return message
-        except Exception as exc:
-            add_log(AGENT, f"Qwen API error ({exc}), falling back to mock response")
-
-    # TokenRouter fallback
-    tokenrouter_key = os.getenv("TOKENROUTER_API_KEY", "")
-    if tokenrouter_key:
-        try:
-            response = httpx.post(
-                "https://api.tokenrouter.io/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {tokenrouter_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "qwen-plus",
-                    "messages": [{"role": "user", "content": _build_prompt(company, role)}],
-                    "max_tokens": 150,
-                },
-                timeout=8.0,
-            )
-            response.raise_for_status()
-            message = response.json()["choices"][0]["message"]["content"].strip()
-            add_log(AGENT, f"Outreach generated via TokenRouter for {company}")
-            return message
-        except Exception as exc:
-            add_log(AGENT, f"TokenRouter error ({exc}), using mock response")
-
-    # Graceful mock fallback — demo never breaks
-    msg = _MOCK_MESSAGES["default"].format(company=company, role=role)
-    add_log(AGENT, f"Outreach mock response returned for {company}")
-    return msg
+    add_log(AGENT, f"Generating outreach for {company} ({role})")
+    text = llm_chat(
+        prompt=(
+            f"Write a concise, warm recruiter outreach message for a student "
+            f"applying to a {role} role at {company}. 2-4 sentences, specific, "
+            f"human, no placeholders, no subject line."
+        ),
+        system="You write short, genuine job-outreach messages.",
+        max_tokens=180,
+        temperature=0.7,
+    )
+    if text:
+        add_log(AGENT, f"LLM outreach ready for {company}")
+        return text
+    add_log(AGENT, f"LLM unavailable — templated outreach for {company}")
+    return _fallback(company, role)
