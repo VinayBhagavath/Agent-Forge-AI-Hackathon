@@ -11,6 +11,9 @@ then ask the LLM, or report that it needs a key).
 """
 
 import io
+import re
+import zipfile
+import xml.etree.ElementTree as ET
 from utils.logger import add_log
 from services.llm_service import llm_json
 
@@ -40,6 +43,15 @@ def _extract_text(filename: str, raw: bytes) -> str:
             return "\n".join((p.extract_text() or "") for p in reader.pages)
         except Exception as exc:
             add_log(AGENT, f"PDF parse degraded ({type(exc).__name__}) — using raw bytes")
+    if name.endswith(".docx"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as docx:
+                xml = docx.read("word/document.xml")
+            root = ET.fromstring(xml)
+            ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            return "\n".join(t.text or "" for t in root.findall(".//w:t", ns))
+        except Exception as exc:
+            add_log(AGENT, f"DOCX parse degraded ({type(exc).__name__}) - using raw bytes")
     try:
         return raw.decode("utf-8", errors="ignore")
     except Exception:
@@ -59,6 +71,7 @@ def _keyword_fallback(text: str) -> dict:
         "inferred_role": role,
         "skills": skills[:10],
         "suggested_companies": [],
+        "resume_text": text[:12000],
         "summary": f"Offline analysis: {role} profile, {len(skills)} skills detected "
                    f"(LLM unavailable — set TOKENROUTER_API_KEY for company matching).",
     }
@@ -70,12 +83,15 @@ def analyze_resume(filename: str, raw: bytes) -> dict:
     if not text:
         return _keyword_fallback("")
 
+    compact_text = re.sub(r"\n{3,}", "\n\n", text)
     prompt = (
-        "Analyze this candidate resume. Determine the single best job title to "
-        "search for, the top technical skills, and 6 to 10 REAL companies that "
-        "actively hire this profile and are likely to have public job boards "
-        "(prefer well-known tech/AI companies). Resume:\n\n"
-        f"{text[:5000]}\n\n"
+        "Analyze this candidate resume as routing input for a job-search agent. "
+        "Scan for concrete technical skills, shipped projects, domains, seniority, "
+        "and experience evidence. Determine the single best job title to search "
+        "for. Suggest 6 to 10 REAL companies whose roles should specifically fit "
+        "this resume, not generic famous AI companies. The summary must mention "
+        "specific resume evidence and why the routing changed. Resume:\n\n"
+        f"{compact_text[:7000]}\n\n"
         'JSON shape: {"inferred_role": str, "skills": [str], '
         '"suggested_companies": [str], "summary": str}'
     )
@@ -86,6 +102,7 @@ def analyze_resume(filename: str, raw: bytes) -> dict:
             "inferred_role": str(data["inferred_role"])[:80],
             "skills": [str(s)[:30] for s in data.get("skills", [])][:10],
             "suggested_companies": [str(c)[:50] for c in data["suggested_companies"]][:10],
+            "resume_text": compact_text[:12000],
             "summary": str(data.get("summary", ""))[:240]
                        or f"{data['inferred_role']} profile matched to "
                           f"{len(data['suggested_companies'])} hiring companies.",

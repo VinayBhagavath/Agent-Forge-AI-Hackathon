@@ -30,6 +30,7 @@ async def upload_resume(file: UploadFile = File(...)):
             "skills": [],
             "suggested_companies": ["Anthropic", "OpenAI", "Perplexity"],
             "summary": "Could not fully parse resume; using general SWE profile.",
+            "resume_text": raw.decode("utf-8", errors="ignore")[:12000],
         }
     return ResumeAnalysis(**analysis)
 
@@ -74,7 +75,7 @@ def run_agents(req: RunAgentRequest):
         # 3. Verification + scoring
         try:
             orch.step("VerificationAgent", "Score realness of each posting")
-            scored_jobs = score_jobs(jobs)
+            scored_jobs = score_jobs(jobs, req.resume_text)
         except Exception as exc:
             add_log("Orchestrator", f"Scoring failed: {exc}")
             scored_jobs = jobs
@@ -90,7 +91,7 @@ def run_agents(req: RunAgentRequest):
         # 5. Outreach (Qwen)
         try:
             orch.step("OutreachAgent", "Draft recruiter outreach via Qwen")
-            messages = generate_messages(scored_jobs, req.role)
+            messages = generate_messages(scored_jobs, req.role, req.resume_text)
         except Exception as exc:
             add_log("Orchestrator", f"Outreach failed: {exc}")
             messages = []

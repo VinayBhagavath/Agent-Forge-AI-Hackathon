@@ -62,7 +62,7 @@ function Feed({ logs }) {
 function JobCard({ job, onApply, applyState }) {
   const score = job.score ?? 70;
   const color = score >= 80 ? "#34d399" : score >= 60 ? "#f59e0b" : "#f87171";
-  const label = score >= 80 ? "REAL" : score >= 60 ? "LIKELY" : "STALE";
+  const label = score >= 80 ? "STRONG FIT" : score >= 60 ? "POSSIBLE FIT" : "LOW FIT";
   const canApply = job.source === "Greenhouse" || job.source === "Lever";
   return (
     <div style={{ background: "rgba(15,22,35,0.9)", border: "1px solid #1e293b", borderRadius: 11, padding: "13px 15px", display: "flex", alignItems: "center", gap: 13 }}>
@@ -74,6 +74,16 @@ function JobCard({ job, onApply, applyState }) {
         </div>
         <div style={{ fontSize: 11, color: "#475569" }}>{job.company} · <span style={{ color: "#334155" }}>{job.source}</span></div>
         {job.score_reason && <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>{job.score_reason}</div>}
+        {job.matched_skills?.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
+            {job.matched_skills.map(s => <span key={s} style={{ fontSize: 8, color: "#34d399", background: "#34d39912", border: "1px solid #34d39922", padding: "1px 6px", borderRadius: 6, fontFamily: "monospace" }}>{s}</span>)}
+          </div>
+        )}
+        {job.missing_skills?.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+            {job.missing_skills.map(s => <span key={s} style={{ fontSize: 8, color: "#f59e0b", background: "#f59e0b10", border: "1px solid #f59e0b22", padding: "1px 6px", borderRadius: 6, fontFamily: "monospace" }}>Gap: {s}</span>)}
+          </div>
+        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
         <span style={{ fontSize: 9, color, background: `${color}15`, padding: "2px 8px", borderRadius: 7, fontWeight: 700 }}>{label}</span>
@@ -175,9 +185,9 @@ export default function App() {
       if (!res.ok) throw new Error(`Resume parse failed: ${res.status}`);
       const data = await res.json();
       setAnalysis(data);
-      if (!role.trim()) setRole(data.inferred_role);
-      if (!companies.trim()) setCompanies(data.suggested_companies.join(", "));
-      const txt = await file.text().catch(() => "");
+      setRole(data.inferred_role || "");
+      setCompanies((data.suggested_companies || []).join(", "));
+      const txt = data.resume_text || await file.text().catch(() => "");
       setResumeText(txt);
     } catch (e) {
       setError(e.message.includes("fetch") ? "Cannot reach backend — run: uvicorn app:app --reload" : e.message);

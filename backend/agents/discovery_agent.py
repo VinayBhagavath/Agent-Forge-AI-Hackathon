@@ -9,8 +9,10 @@ AGENT = "DiscoveryAgent"
 def _llm_companies(role: str, resume_text: str, exclude: list[str]) -> list[str]:
     """Ask the LLM which real companies are hiring for this role/profile."""
     prompt = (
-        f"List 8 real, well-known companies currently hiring for '{role}' "
-        f"roles that are likely to have a public Greenhouse or Lever job board."
+        f"List 8 real companies currently hiring for '{role}' roles that are "
+        f"likely to have a public Greenhouse or Lever job board. Choose companies "
+        f"because they match the candidate's resume skills/domains, not because "
+        f"they are generic famous AI companies."
     )
     if resume_text.strip():
         prompt += f" Tailor to this candidate background:\n{resume_text[:1500]}"

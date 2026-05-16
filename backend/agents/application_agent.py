@@ -3,6 +3,8 @@ from services.actionbook_service import apply_to_job
 from utils.logger import add_log
 
 AGENT = "ApplicationAgent"
+MIN_AUTO_APPLY_SCORE = 72
+SUPPORTED_SOURCES = {"Greenhouse", "Lever"}
 
 
 def auto_apply(job: Job, resume_text: str) -> ApplicationResult:
@@ -24,6 +26,12 @@ def auto_apply_top(jobs: list[Job], resume_text: str, limit: int = 1) -> list[Ap
     for job in jobs:
         if len(results) >= limit:
             break
+        if job.source not in SUPPORTED_SOURCES:
+            add_log(AGENT, f"Skipping {job.company}: {job.source} is not auto-fillable")
+            continue
+        if (job.score or 0) < MIN_AUTO_APPLY_SCORE:
+            add_log(AGENT, f"Skipping {job.company}: resume fit below auto-apply threshold")
+            continue
         try:
             results.append(auto_apply(job, resume_text))
         except Exception as exc:

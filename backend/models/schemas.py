@@ -9,6 +9,8 @@ class Job(BaseModel):
     source: str
     score: Optional[float] = None
     score_reason: Optional[str] = None
+    matched_skills: list[str] = Field(default_factory=list)
+    missing_skills: list[str] = Field(default_factory=list)
     live: bool = False
 
 
@@ -44,6 +46,7 @@ class ResumeAnalysis(BaseModel):
     skills: list[str] = Field(default_factory=list)
     suggested_companies: list[str] = Field(default_factory=list)
     summary: str
+    resume_text: str = ""
 
 
 class ApplyRequest(BaseModel):
