@@ -135,6 +135,13 @@ function JobCard({ job, onApply, applyState }) {
         <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "var(--ink-soft)", marginTop: 4, letterSpacing: ".04em" }}>
           {job.company} <span style={{ opacity: .5 }}>· via {job.source}</span>
         </div>
+        {job.salary_range && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--amber)", background: "color-mix(in srgb,var(--amber) 12%,var(--paper))", border: "1px solid color-mix(in srgb,var(--amber) 35%,transparent)", padding: "2px 8px", borderRadius: 2, letterSpacing: ".06em" }}>
+              ◈ {job.salary_range}
+            </span>
+          </div>
+        )}
         {job.score_reason && <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 4, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>{job.score_reason}</div>}
         {job.matched_skills?.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
@@ -238,6 +245,46 @@ function MessageCard({ msg }) {
         <span style={{ color: "var(--amber)", fontSize: 26, lineHeight: 0, verticalAlign: "-8px", marginRight: 2 }}>“</span>
         {msg.message}
         <span style={{ color: "var(--amber)", fontSize: 26, lineHeight: 0, verticalAlign: "-12px", marginLeft: 2 }}>”</span>
+      </div>
+    </div>
+  );
+}
+
+function CoverLetterCard({ text, job }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid rgba(36,28,18,.22)",
+      borderLeft: "3px solid var(--amber)", borderRadius: 6,
+      padding: "22px 24px",
+      boxShadow: "0 18px 40px -26px rgba(0,0,0,.65), inset 0 0 0 1px rgba(36,28,18,.04)",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--amber)", letterSpacing: ".22em", textTransform: "uppercase", marginBottom: 5 }}>
+            Cover Letter · Z.ai GLM
+          </div>
+          {job && (
+            <div style={{ fontFamily: "'Fraunces',serif", fontSize: 15, color: "var(--ink)", fontStyle: "italic" }}>
+              For <span style={{ fontWeight: 600, fontStyle: "normal" }}>{job.title}</span> at {job.company}
+            </div>
+          )}
+        </div>
+        <button onClick={copy} className="ghost-btn" style={{ borderColor: copied ? "var(--teal)" : "rgba(36,28,18,.3)", color: copied ? "var(--teal)" : "var(--ink-soft)", flexShrink: 0 }}>
+          {copied ? "✓ copied" : "copy"}
+        </button>
+      </div>
+      <div style={{
+        fontFamily: "'Fraunces',serif", fontSize: 14, color: "var(--ink)",
+        lineHeight: 1.85, whiteSpace: "pre-wrap", borderTop: "1px solid rgba(36,28,18,.14)",
+        paddingTop: 16,
+      }}>
+        {text}
       </div>
     </div>
   );
@@ -598,6 +645,16 @@ export default function App() {
                   <div style={{ marginBottom: 20 }}>
                     <Rule n="06" label="Recruiter Outreach · Z.ai GLM" tone="violet" />
                     {result.messages.map((m, i) => <MessageCard key={i} msg={m} />)}
+                  </div>
+                )}
+
+                {result.cover_letter && (
+                  <div style={{ marginBottom: 20 }}>
+                    <Rule n="07" label="Cover Letter · Ready to Send" tone="amber" />
+                    <CoverLetterCard
+                      text={result.cover_letter}
+                      job={result.jobs?.[0]}
+                    />
                   </div>
                 )}
 

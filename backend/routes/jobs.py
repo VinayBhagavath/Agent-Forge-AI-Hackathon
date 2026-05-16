@@ -13,6 +13,7 @@ from agents.application_agent import auto_apply_top, auto_apply
 from services.scoring_service import score_jobs
 from services.resume_service import analyze_resume
 from services.agentfield_service import orchestrate
+from services.cover_letter_service import generate_cover_letter
 
 router = APIRouter()
 
@@ -88,9 +89,9 @@ def run_agents(req: RunAgentRequest):
             add_log("Orchestrator", f"Signal scrape failed: {exc}")
             signals = []
 
-        # 5. Outreach (Qwen)
+        # 5. Outreach (Z.ai GLM)
         try:
-            orch.step("OutreachAgent", "Draft recruiter outreach via Qwen")
+            orch.step("OutreachAgent", "Draft recruiter outreach via Z.ai GLM")
             messages = generate_messages(scored_jobs, req.role, req.resume_text)
         except Exception as exc:
             add_log("Orchestrator", f"Outreach failed: {exc}")
@@ -104,6 +105,16 @@ def run_agents(req: RunAgentRequest):
             add_log("Orchestrator", f"Auto-apply failed: {exc}")
             applications = []
 
+        # 7. Cover letter for the top job (Z.ai GLM)
+        cover_letter = None
+        try:
+            top = next((j for j in scored_jobs if j.url), None)
+            if top and req.resume_text.strip():
+                orch.step("CoverLetterAgent", f"Writing cover letter for {top.title} @ {top.company}")
+                cover_letter = generate_cover_letter(top, req.resume_text, req.role)
+        except Exception as exc:
+            add_log("Orchestrator", f"Cover letter failed: {exc}")
+
         orch.step("Orchestrator", f"Done — {len(scored_jobs)} jobs, "
                                   f"{len(messages)} msgs, {len(applications)} applied")
 
@@ -113,4 +124,5 @@ def run_agents(req: RunAgentRequest):
         signals=signals,
         applications=applications,
         logs=get_logs(),
+        cover_letter=cover_letter,
     )

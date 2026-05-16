@@ -74,6 +74,20 @@ def _greenhouse(company: str, slug: str, role: str, client: httpx.Client) -> lis
         return []
 
 
+def _lever_salary(comp: dict | None) -> str | None:
+    if not isinstance(comp, dict):
+        return None
+    lo, hi = comp.get("min"), comp.get("max")
+    if not lo and not hi:
+        return None
+    cur = comp.get("currency", "USD")
+    sym = "$" if cur == "USD" else cur + " "
+    def fmt(v): return f"{sym}{int(v)//1000}k" if v and v >= 1000 else f"{sym}{v}"
+    if lo and hi:
+        return f"{fmt(lo)}–{fmt(hi)}/yr"
+    return f"{fmt(lo or hi)}/yr"
+
+
 def _lever(company: str, slug: str, role: str, client: httpx.Client) -> list[Job]:
     try:
         r = client.get(f"https://api.lever.co/v0/postings/{slug}?mode=json")
@@ -84,7 +98,8 @@ def _lever(company: str, slug: str, role: str, client: httpx.Client) -> list[Job
             return []
         out = [
             Job(company=company, title=j.get("text", ""),
-                url=j.get("hostedUrl", ""), source="Lever", live=True)
+                url=j.get("hostedUrl", ""), source="Lever", live=True,
+                salary_range=_lever_salary(j.get("compensation")))
             for j in data if _role_match(j.get("text", ""), role)
         ]
         return out[:4]

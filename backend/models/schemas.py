@@ -12,6 +12,7 @@ class Job(BaseModel):
     matched_skills: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     live: bool = False
+    salary_range: Optional[str] = None   # e.g. "$140k–$190k/yr"
 
 
 class RunAgentRequest(BaseModel):
@@ -69,3 +70,4 @@ class RunAgentResponse(BaseModel):
     signals: list[RecruiterSignal] = Field(default_factory=list)
     applications: list[ApplicationResult] = Field(default_factory=list)
     logs: list[AgentLog]
+    cover_letter: Optional[str] = None   # for the top-scored job

@@ -71,12 +71,13 @@ def _llm_fit_scores(jobs: list[Job], resume_text: str) -> dict[int, dict]:
         "domains, seniority, and experience evidence from the resume. Do not give "
         "every job the same score. Penalize jobs whose title/domain does not match. "
         "For each job, return a concise custom reason, matched_skills from the "
-        "resume, and missing_skills/gaps from the job title or obvious role needs.\n\n"
+        "resume, missing_skills/gaps, and a realistic US base salary_range string "
+        "(e.g. '$140k–$190k/yr') based on the role title and company.\n\n"
         f"Resume:\n{resume_text[:8000]}\n\nJobs:\n{job_lines}\n\n"
         'JSON shape: {"jobs":[{"index": int, "fit_score": int, "reason": str, '
-        '"matched_skills": [str], "missing_skills": [str]}]}'
+        '"matched_skills": [str], "missing_skills": [str], "salary_range": str}]}'
     )
-    data = llm_json(prompt, max_tokens=1200)
+    data = llm_json(prompt, max_tokens=1400)
     rows = (data or {}).get("jobs", [])
     out: dict[int, dict] = {}
     for row in rows:
@@ -96,9 +97,10 @@ def _llm_fit_scores(jobs: list[Job], resume_text: str) -> dict[int, dict]:
                 "reason": str(row.get("reason", ""))[:220],
                 "matched_skills": [str(s)[:30] for s in matched][:5],
                 "missing_skills": [str(s)[:30] for s in missing][:4],
+                "salary_range": str(row.get("salary_range", ""))[:40] or None,
             }
     if out:
-        add_log(AGENT, f"Resume-aware model scored {len(out)} jobs")
+        add_log(AGENT, f"Resume-aware model scored {len(out)} jobs (incl. salary bands)")
     return out
 
 
@@ -117,11 +119,15 @@ def score_jobs(jobs: list[Job], resume_text: str = "") -> list[Job]:
             f"Resume fit {fit['fit_score']}/100: {fit['reason']}.{gap} "
             f"Realness: {realness['reason']}."
         )
-        add_log(AGENT, f"{job.company}: resume fit {fit['fit_score']}/100, final {final_score}/100")
+        # Prefer real salary from ATS; fall back to LLM estimate
+        salary = job.salary_range or fit.get("salary_range") or None
+        add_log(AGENT, f"{job.company}: resume fit {fit['fit_score']}/100, final {final_score}/100"
+                       + (f", salary {salary}" if salary else ""))
         scored.append(job.model_copy(update={
             "score": final_score,
             "score_reason": reason[:320],
             "matched_skills": matched,
             "missing_skills": missing,
+            "salary_range": salary,
         }))
     return sorted(scored, key=lambda j: j.score or 0, reverse=True)
